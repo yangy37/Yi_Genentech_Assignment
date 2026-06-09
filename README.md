@@ -46,7 +46,7 @@ Main derivation program that:
 
 Study-specific controlled terminology used for disposition mapping.
 
-### `question_1_sdtm_log.txt`
+### `question_1_log.txt`
 
 Execution log demonstrating successful program execution.
 
@@ -74,7 +74,7 @@ Main derivation program that:
 * Creates analysis populations
 * Produces an ADaM-compliant ADSL dataset
 
-### `question_2_adam_log.txt`
+### `question_2_log.txt`
 
 Execution log demonstrating successful program execution.
 
@@ -114,6 +114,10 @@ Creates:
 * `AE_summary_table.html`
 * `AE_summary_table.pdf`
 
+### `question_3_table_log.txt`
+
+Execution log demonstrating successful program execution.
+
 ---
 
 ## 3.2 AE Visualizations
@@ -129,15 +133,18 @@ Create graphical summaries of adverse event data.
 Generates:
 
 * AE Severity Distribution by Treatment (Stacked Bar Chart)
-* Top 10 Most Frequent TEAEs (Forest Plot with 95% Confidence Intervals)
 * AE Heatmap Visualization
+* Top 10 Most Frequent TEAEs (Forest Plot with 95% Confidence Intervals)
 
 ### Output
 
 * `question_3_2_barchart.png`
-* `question_3_2_forestplot.png`
 * `question_3_2_heatmap.png`
+* `question_3_2_forestplot.png`
 
+### `question_3_table_log_2.txt`
+
+Execution log demonstrating successful program execution.
 ---
 
 # Question 4 — Generative AI Clinical Data Assistant
