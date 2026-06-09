@@ -50,14 +50,6 @@ Create an SDTM-compliant DS (Disposition) domain using the `{sdtm.oak}` framewor
 
 Create an ADaM ADSL (Subject-Level Analysis Dataset) using the `{admiral}` package and SDTM input domains.
 
-## Input Domains
-
-* DM
-* VS
-* EX
-* DS
-* AE
-
 ## Key Deliverables
 
 * ADSL derivation program
@@ -108,18 +100,6 @@ Create graphical summaries of adverse event data using `{ggplot2}`.
 * `question_3_2_barchart.png`
 * `question_3_2_forestplot.png`
 * `qquestion_3_2_heatmap.png`
-
-### Visualizations Included
-
-#### AE Severity Distribution by Treatment
-
-* Stacked bar chart
-* Comparison of severity categories across treatment groups
-
-#### Top 10 Most Frequent Adverse Events
-
-* Forest plot
-* Incidence rates with 95% Clopper-Pearson confidence intervals
 
 ---
 
