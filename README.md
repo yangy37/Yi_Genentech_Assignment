@@ -70,8 +70,7 @@ Create an ADaM ADSL (Subject-Level Analysis Dataset) using the `{admiral}` packa
 Main derivation program that:
 
 * Reads SDTM domains
-* Derives subject-level analysis variables
-* Creates analysis populations
+* Derives required ADaM ADSL variables
 * Produces an ADaM-compliant ADSL dataset
 
 ### `question_2_log.txt`
@@ -105,18 +104,17 @@ Creates:
 
 * Overall TEAE summary
 * Serious adverse events
-* AE-related discontinuations
-* AE-related deaths
 * Severity breakdown by treatment group
+
+### `question_3_table_log.txt`
+
+Execution log demonstrating successful program execution.
 
 ### Output
 
 * `AE_summary_table.html`
 * `AE_summary_table.pdf`
 
-### `question_3_table_log.txt`
-
-Execution log demonstrating successful program execution.
 
 ---
 
@@ -136,15 +134,16 @@ Generates:
 * AE Heatmap Visualization
 * Top 10 Most Frequent TEAEs (Forest Plot with 95% Confidence Intervals)
 
+### `question_3_table_log_2.txt`
+
+Execution log demonstrating successful program execution.
+
 ### Output
 
 * `question_3_2_barchart.png`
 * `question_3_2_heatmap.png`
 * `question_3_2_forestplot.png`
 
-### `question_3_table_log_2.txt`
-
-Execution log demonstrating successful program execution.
 ---
 
 # Question 4 — Generative AI Clinical Data Assistant
@@ -232,9 +231,9 @@ Responsibilities:
 
 ---
 
-### `adae.csv`
+### `data/adae.csv`
 
-Sample adverse event dataset used by the AI assistant.
+Sample adverse event dataset (pharmaversesdtm::ae) used by the AI assistant.
 
 ---
 
