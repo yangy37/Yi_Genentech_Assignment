@@ -205,6 +205,7 @@ Structured output parser.
 Responsibilities:
 
 * Validates LLM responses
+* Defines the `ClinicalTrialDataAgent` class
 * Converts responses into a standardized JSON structure
 * Extracts query parameters used for dataset filtering
 
