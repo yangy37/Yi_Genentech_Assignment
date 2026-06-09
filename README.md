@@ -48,10 +48,6 @@ Main derivation program that:
 
 Study-specific controlled terminology used for disposition mapping.
 
-### `ds_SDTM.csv`
-
-Final SDTM DS dataset.
-
 ### `question_1_sdtm_log.txt`
 
 Execution log demonstrating successful program execution.
@@ -79,10 +75,6 @@ Main derivation program that:
 * Derives subject-level analysis variables
 * Creates analysis populations
 * Produces an ADaM-compliant ADSL dataset
-
-### `adam_adsl.csv`
-
-Final ADaM ADSL dataset.
 
 ### `question_2_adam_log.txt`
 
