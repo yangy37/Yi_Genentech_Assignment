@@ -271,6 +271,34 @@ Run the application:
 ```bash
 python ClinicalTrialDataAgent.py
 ```
+### Customizing Example Questions
+
+The application includes a list of predefined example questions for demonstration purposes.
+
+To add or modify example questions, open:
+
+```text
+ClinicalTrialDataAgent.py
+```
+
+Locate the following section:
+
+```python
+questions = [
+    "Which subjects experienced severe headache adverse events?",
+    ...
+]
+```
+
+Add additional questions to the list as needed. The application will process each question through the complete workflow:
+
+1. Natural language question
+2. LLM interpretation
+3. Structured JSON generation
+4. Clinical dataset query execution
+5. Results summary
+
+This allows users to easily test additional clinical data queries without modifying the core application logic.
 
 ### Example Query
 
@@ -301,6 +329,7 @@ Summary:
 
 ## Output
 
+* PDF file for Final Output
 * Structured JSON interpretation
 * Matching subject IDs
 * Query results summary
