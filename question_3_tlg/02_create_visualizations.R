@@ -1,0 +1,269 @@
+###############################################################################
+# Project    : Genentech Programming Assessment
+# Question   : Question 3 - TLG Adverse Events Visualizations
+#
+# Purpose: Create adverse event visualizations using pharmaverseadam::adae and
+#          pharmaverseadam::adsl, including AE severity distribution by treatment
+#          and Top 10 TEAE incidence with 95% confidence intervals.
+#
+# Input: - pharmaverseadam::adae
+#        - pharmaverseadam::adsl
+#
+# Output: - output/question_3_2_heatmap.png
+#         - output/question_3_2_barchart.png
+#         - output/question_3_2_forestplot.png
+#
+###############################################################################
+#Version      Author      Date          Description
+#1.0          Yi Yang     06/07/2026    Initial AE Plots
+###############################################################################
+
+# -----------------------Setup -----------------------------------------------
+
+required_packages <- c(
+  "sdtm.oak",
+  "pharmaverseraw",
+  "pharmaversesdtm",
+  "admiral",
+  "dplyr",
+  "haven",
+  "tidyr",
+  "stringr",
+  "readr",
+  "ggplot2",
+  "gt",
+  "htmltools",
+  "metacore",
+  "metatools",
+  "gtsummary",
+  "gt",
+  "cards",
+  "tfrmt"
+)
+
+installed_packages <- rownames(installed.packages())
+
+for (pkg in required_packages) {
+  if (!pkg %in% installed_packages) {
+    install.packages(pkg, dependencies = TRUE)
+  }
+}
+
+lapply(required_packages, library, character.only = TRUE)
+
+# Determine program folder regardless of whether the script is run from the
+# project root or from within the question_3_tlg folder.
+base_dir <- if (basename(getwd()) == "question_3_tlg") "." else "question_3_tlg"
+
+log_file <- file.path(base_dir, "question_3_table_log_2.txt")
+log_con <- file(log_file, open = "wt")
+
+# Redirect output and messages
+sink(log_con, split = TRUE)
+sink(log_con, type = "message")
+
+cat("Setup complete.\n")
+cat("Required packages installed and loaded successfully.\n")
+cat("Run time:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), "\n")
+
+# ---------------------Load Data -----------------------------------------------
+adae <- pharmaverseadam::adae
+adsl <- pharmaverseadam::adsl
+
+
+# -------------- Plot 1: AE severity distribution by treatment -----------------
+adae1 <- adae %>% 
+  filter(TRTEMFL == "Y") %>%  
+  filter(!is.na(AESEV)) %>% 
+  select(USUBJID, ACTARM,  AESEV) 
+
+# Count Severity for each Arms
+adae2 <- adae1 %>% 
+  group_by(ACTARM, AESEV) %>% 
+  summarise(
+    count = n(),
+    .groups = "drop"
+  )
+
+# -------------- Generate bar chart --------------------------------------------
+barchart <- ggplot(
+  adae2,
+  aes(
+    x = ACTARM,
+    y = count,
+    fill = AESEV
+  )
+) +
+  geom_col(
+    width = 0.8,
+    color = "black"
+  ) +
+  labs(
+    title = "Treatment-Emergent Adverse Events by Severity",
+    x = "Treatment Arm",
+    y = "Count of AEs",
+    fill = "Severity"
+  ) +
+  scale_x_discrete(
+    labels = c(
+      "Placebo" = "Placebo",
+      "Xanomeline Low Dose" = "Xanomeline\nLow Dose",
+      "Xanomeline High Dose" = "Xanomeline\nHigh Dose"
+    )
+  ) +
+  scale_fill_manual(
+    values = c(
+      "MILD" = "RED",
+      "MODERATE" = "GREEN",
+      "SEVERE" = "BLUE"
+    ),
+    breaks = c("MILD", "MODERATE", "SEVERE")
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      hjust = 0.5,
+      size = 14
+    ),
+    plot.subtitle = element_text(
+      hjust = 0.5
+    ),
+    legend.position = "right",
+    axis.text.x = element_text(
+      size = 10
+    )
+  )
+# -------------- Save output --------------------------------------------------
+ggsave(
+  filename = "question_3_2_barchart.png",
+  plot = barchart
+)
+
+# -------------- Generate heatmap ---------------------------------------------
+heatmap <- ggplot(
+  data = adae2,
+  aes(
+    x = ACTARM,
+    y = AESEV,
+    fill = count
+  )
+) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(
+    aes(label = count),
+    size = 4
+  ) +
+  labs(
+    title = "AE Severity Distribution by Treatment",
+    x = "Treatment Arm",
+    y = "Severity/Intensity",
+    fill = "AE Count"
+  ) +
+  scale_x_discrete(
+    labels = c(
+      "Placebo" = "Placebo",
+      "Xanomeline Low Dose" = "Xanomeline\nLow Dose",
+      "Xanomeline High Dose" = "Xanomeline\nHigh Dose"
+    )
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "darkred"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.text.x = element_text(angle = 0),
+    panel.grid = element_blank()
+  )
+# -------------- Save output --------------------------------------------------
+ggsave(
+  filename = "question_3_2_heatmap.png",
+  plot = heatmap
+)
+
+# -------------- Plot 2: Top 10 most frequent AEs (with 95% CI for incidence rates)
+# Count Big N
+total <- adsl %>% distinct(USUBJID) %>% nrow()
+
+adae3 <- adae %>%
+  filter(!is.na(AETERM)) %>% 
+  filter(TRTEMFL == "Y") %>% 
+  distinct(USUBJID, AETERM)
+
+# Count Top 10 AETERM
+adae4 <- adae3 %>%
+  group_by(AETERM) %>%
+  summarise(count = n()) %>%
+  # descending order
+  arrange(desc(count)) %>% 
+  # Leave 10 record
+  slice_head(n = 10) %>% 
+  ungroup()
+
+# Compute incidence (%) and 95% CI
+adae_ci <- adae4 %>%
+  rowwise() %>%
+  mutate(
+    ci = list(binom.test(count, total, conf.level = 0.95)$conf.int),
+    lower = ci[1],
+    upper = ci[2],
+    pct = 100 * count / total,
+    lower_pct = 100 * lower,
+    upper_pct = 100 * upper
+  ) %>%
+  ungroup() %>%
+  select(-ci)
+# -------------- Generate forest plot ------------------------------------------------------
+forest_plot <- ggplot(
+  adae_ci,
+  aes(
+    x = pct,
+    y = reorder(AETERM, pct)
+  )
+) +
+  geom_errorbarh(
+    aes(
+      xmin = lower_pct,
+      xmax = upper_pct
+    ),
+    height = 0.2
+  ) +
+  geom_point(size = 2.5) +
+  geom_vline(
+    xintercept = 0,
+    linetype = "dashed",
+    color = "gray50"
+  ) +
+  labs(
+    title = "Top 10 Most Frequent Treatment-Emergent Adverse Events",
+    subtitle = paste0(
+      "N = ", unique(adae_ci$total)[1]," subjects; 95% Clopper-Pearson Confidence Intervals"
+    ),
+    x = "Percentage of Patients (%)",
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.25),
+    plot.subtitle = element_text(hjust = 0.25),
+    axis.text.y = element_text(size = 10)
+  )
+
+# -------------- Save output --------------------------------------------------
+ggsave(
+  filename = "question_3_2_forestplot.png",
+  plot = forest_plot
+)
+
+cat("Question 3 - 2 complete\n")
+cat("Session information:\n")
+print(sessionInfo())
+cat("Program completed successfully.\n")
+
+# Close sinks
+sink(type = "message")
+sink()
+
+close(log_con)

@@ -1,0 +1,298 @@
+###############################################################################
+# Project    : Genentech Programming Assessment
+# Question   : Question 1 - SDTM DS Domain Creation
+#
+# Purpose: Create SDTM DS domain using pharmaverseraw::ds_raw and sdtm.oak.
+#
+# Input: - pharmaverseraw::ds_raw, sdtm_ct
+#
+# Output:  - output/ds.xpt, output/ds.csv
+#
+###############################################################################
+#Version      Author      Date          Description
+#1.0          Yi Yang     06/02/2026    Initial DS Program
+###############################################################################
+
+# -----------------------Setup -----------------------------------------------
+required_packages <- c(
+  "sdtm.oak",
+  "pharmaverseraw",
+  "admiral",
+  "tidyverse",
+  "dplyr",
+  "haven",
+  "tidyr",
+  "stringr",
+  "readr"
+)
+installed_packages <- rownames(installed.packages())
+
+for (pkg in required_packages) {
+  if (!pkg %in% installed_packages) {
+    install.packages(pkg, dependencies = TRUE)
+  }
+}
+
+invisible(lapply(required_packages, library, character.only = TRUE))
+
+base_dir <- if (basename(getwd()) == "question_1_sdtm") "." else "question_1_sdtm"
+log_file <- file.path(base_dir, "question_1_log.txt")
+
+cat("Setup complete.\n")
+cat("Required packages installed and loaded successfully.\n")
+cat("Run time:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), "\n")
+
+# log output 
+log_con <- file(log_file, open = "wt")
+
+# Redirect output and messages
+sink(log_con, split = TRUE)
+sink(log_con, type = "message")
+
+cat("Program started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), "\n")
+
+# ---------------------Load Data -----------------------------------------------
+dm <- pharmaversesdtm::dm
+
+# Add oak identifier variables
+ds_raw <- pharmaverseraw::ds_raw %>%
+  generate_oak_id_vars(
+    pat_var = "PATNUM",
+    raw_src = "ds_raw"
+  )
+
+# Read Controlled terminology 
+sdtm_ct <- read.csv(
+  file.path(base_dir, "sdtm_ct.csv"),
+  stringsAsFactors = FALSE
+)
+
+# ------------ Identify DSDECOD Codelist and Map to CT ------------------------
+# Logic:
+# Map DSDECOD_COLLECTED to the controlled terminology decode for DSDECOD using
+# study_sct where codelist_code = "C66727".
+#
+# Note:
+# "Randomized" is not available in sdtm_ct for this codelist. Direct CT mapping
+# may generate a warning, so handle "Randomized" separately before the
+# CT mapping step.
+# ----------------------------------------------------------------------------
+ds_dsdecod <- ds_raw %>%
+  mutate(DSDECOD_up = toupper(IT.DSDECOD))
+
+ds_dsdecod1 <- ds_dsdecod %>%
+  filter(DSDECOD_up == "RANDOMIZED")
+
+# Map DSDECOD using controlled terminology for Randomization only
+ds_dsdecod2 <-
+  hardcode_no_ct(
+    raw_dat = ds_dsdecod1,
+    raw_var = "DSDECOD_up",
+    tgt_var = "DSDECOD",
+    tgt_val = "RANDOMIZED",
+    id_vars = oak_id_vars()
+  )
+
+ds_dsdecod3 <- ds_dsdecod %>%
+  filter(DSDECOD_up != "RANDOMIZED" | is.na(DSDECOD_up))
+
+# Map DSDECOD using controlled terminology for all variable except Randomization
+ds_dsdecod4 <- 
+  assign_ct(
+    raw_dat = ds_dsdecod3,
+    raw_var = "DSDECOD_up",
+    tgt_var = "DSDECOD",
+    ct_spec = sdtm_ct,
+    ct_clst = "C66727",
+    id_vars = oak_id_vars()
+  )
+
+# Combine DSDECOD Seperate DSDECOD Analysis
+ds_pre2 <- bind_rows(ds_dsdecod2, ds_dsdecod4) %>%
+  select("oak_id", DSDECOD)
+
+# Merge back to DS_raw
+ds_pre <-  ds_raw %>% left_join(ds_pre2, by = "oak_id")
+
+# ------------------- Map DSTERM ---------------------------------------------
+# Logic : DSTERM = DSTERM_COLLECTED
+ds_noct <- assign_no_ct(
+  raw_dat = ds_pre,
+  raw_var = "IT.DSTERM",
+  tgt_var = "DSTERM",
+  id_vars = oak_id_vars()
+  ) %>%
+  # ------------------------Derive DSDTC to ISO 8601 format----------------------------------------
+# Logic : Mapping DSDTCOL, DSTMCOL to DSDTC
+  assign_datetime(
+    raw_dat = ds_pre,
+    raw_var = c("DSDTCOL", "DSTMCOL"),
+    tgt_var = "DSDTC",
+    raw_fmt = c("m-d-y", "H:M"),
+    id_vars = oak_id_vars()
+  ) %>%
+  # ------------ Derive DSSTDTC -----------------------------------------------
+# Logic:
+# Derive DSSTDTC by converting IT.DSSTDAT to an ISO 8601 date character value
+  assign_datetime(
+    raw_dat = ds_pre,
+    raw_var = "IT.DSSTDAT",
+    tgt_var = "DSSTDTC",
+    raw_fmt = c("m-d-y"),
+    id_vars = oak_id_vars()
+  ) %>%
+  # ------------ Derive STUDYID -----------------------------------------------
+# Logic:
+# Populate STUDYID by mapping the source variable STUDY to STUDYID.
+  assign_no_ct(
+    raw_var = "STUDY",
+    raw_dat = ds_raw,
+    tgt_var = "STUDYID",
+    id_vars = oak_id_vars()
+  )%>%
+  # ----------------------- Map DOMAIN------------------------------------------------------------
+# Logic : Hardcode DOMAIN as a constant "DS"
+  hardcode_no_ct(
+    raw_var = "PATNUM",
+    raw_dat = ds_raw,
+    tgt_var = "DOMAIN",
+    tgt_val = "DS",
+    id_vars = oak_id_vars()
+  )
+
+ds_noct <- ds_noct %>% left_join(ds_pre,by = c("oak_id", "raw_source", "patient_number"))
+# ------------ Derive VISIT / VISITNUM ---------------------------------------
+# Logic:
+# Derive scheduled VISIT and VISITNUM based on study timepoint information.
+#
+#   - INSTANCE represents the study timepoint and is mapped to VISIT.
+#   - Scheduled visit mapping is derived from the pharmaverse SV domain.
+#   - The derived VISIT and VISITNUM values are merged back to ds_noct.
+visit_map <- pharmaversesdtm::sv %>%
+  select(USUBJID, VISIT, VISITNUM, SVSTDTC, SVENDTC) %>%
+  distinct() %>%
+  filter(!is.na(VISIT), !is.na(VISITNUM)) %>%
+  arrange(USUBJID, VISITNUM) %>%
+  mutate(DSSTDTC1 = SVSTDTC)
+
+
+# Create SDTM derived variables 
+ds <- ds_noct %>%
+  mutate(
+    # ---------------------- Derive USUBJID ----------------------------------------------------------
+    # Logic: USUBJID = STUDY + "-" + PATNUM
+    USUBJID = paste0("01-", ds_pre$PATNUM),
+    
+    # Use OTHERSP when the disposition code is missing.
+    DSTERM  = ifelse(!is.na(ds_pre$OTHERSP), ds_pre$OTHERSP, DSTERM),
+    DSDECOD = ifelse(!is.na(ds_pre$OTHERSP), ds_pre$OTHERSP, DSDECOD),
+    
+    # Upcase DSTERM and DSDECOD
+    DSTERM = toupper(DSTERM),
+    DSDECOD = toupper(DSDECOD),
+    
+    # DSCAT:  RANDOMIZED marks as protocol milestone, 
+    # OTHERSP records as other study events
+    # all remaining records as disposition events
+    DSCAT = case_when(
+      DSDECOD == "RANDOMIZED" ~ "PROTOCOL MILESTONE",
+      !is.na(ds_pre$OTHERSP) ~ "OTHER EVENT",
+      TRUE ~ "DISPOSITION EVENT"
+    ),
+    
+    # Create Variable use for left Join with SV
+    DSSTDTC1 = as.character(DSSTDTC),
+    VISIT = toupper(INSTANCE)
+  ) %>%
+  left_join(visit_map, by = c("USUBJID", "DSSTDTC1", "VISIT"),
+             relationship = "many-to-many"
+  )%>% 
+  
+  # -------------------------------Derive DSSEQ -----------------------------------------------------
+  # Logic : Sequence within USUBJID ordered by DSSTDTC then DSDTC then oak_id.
+  derive_seq(
+    tgt_var = "DSSEQ",
+    rec_vars = c("USUBJID", "oak_id")
+  ) %>%
+  
+  # --------------------------- Derive DSSTDY ---------------------------------------------------
+  # Logic : Derive study day from DSSTDTC relative to RFXSTDTC
+  derive_study_day(
+    sdtm_in = .,
+    dm_domain = dm,
+    tgdt = "DSSTDTC",
+    refdt = "RFXSTDTC",
+    study_day_var = "DSSTDY"
+  )
+
+# ------------ Missing VISIT / VISITNUM --------------------------------------
+# Logic:
+# Some DS records do not have VISIT or VISITNUM assigned from the initial
+# SV-based date matching.
+#
+# For these records, identify the closest scheduled SV visit at the subject
+# level and populate VISIT and VISITNUM only when the closest SV date is within
+# 7 days of the DS disposition start date.
+ds_missingVisit <- ds %>% filter(is.na(VISITNUM))
+
+ds1 <- ds %>% filter(is.na(VISITNUM)) %>% select(-VISIT,-VISITNUM, -SVSTDTC) %>%
+  left_join(
+    visit_map%>%select(-DSSTDTC1),
+    by = "USUBJID"
+  ) %>%
+  mutate(
+    visit_diff = abs(as.Date(DSSTDTC1) - as.Date(SVSTDTC))
+  )
+
+ds2 <- ds1 %>%
+  mutate(
+    VISIT = if_else(visit_diff <= 7, VISIT, NA_character_),
+    VISITNUM = if_else(visit_diff <= 7, VISITNUM, NA_real_)
+  )
+
+ds_missingVisit <-  ds_missingVisit %>% select("USUBJID", "VISIT") %>% 
+  left_join(ds2, by = c("USUBJID", "VISIT"))
+
+ds3 <- ds%>%filter(!is.na(VISITNUM))
+
+ds<-bind_rows(ds3, ds_missingVisit) 
+
+# ---------- Final formatting for SDTM dataset -------------------------------
+ds <- ds %>%
+  select( STUDYID, DOMAIN, USUBJID, DSSEQ, DSTERM, DSDECOD, DSCAT,
+  VISITNUM, VISIT, DSDTC, DSSTDTC, DSSTDY
+) %>% arrange(STUDYID, DOMAIN, USUBJID, DSSEQ)
+
+# Add labels for all Variables
+attr(ds, "label") <- "Disposition"
+labels <- c(
+  STUDYID  = "Study Identifier",
+  DOMAIN   = "Domain Abbreviation",
+  USUBJID  = "Unique Subject Identifier",
+  DSSEQ    = "Sequence Number",
+  DSTERM   = "Reported Term for the Disposition Event",
+  DSDECOD  = "Standardized Disposition Term",
+  DSCAT    = "Category for Disposition Event",
+  VISITNUM = "Visit Number",
+  VISIT    = "Visit Name",
+  DSDTC    = "Date/Time of Collection",
+  DSSTDTC  = "Start Date/Time of Disposition Event",
+  DSSTDY   = "Study Day of Start of Disposition Event"
+)
+
+for (v in names(labels)) {
+  attr(ds[[v]], "label") <- labels[[v]]
+}
+# Write output ─────────────────────────────────────────────────────────────────
+
+# CSV output
+write.csv(ds, "ds.csv", row.names = FALSE, na = "")
+
+# XPT output
+haven::write_xpt(ds, "ds.xpt")
+
+print(sessionInfo())
+# Close sinks
+sink()
+
+close(log_con)
