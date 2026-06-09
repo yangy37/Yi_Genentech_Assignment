@@ -153,69 +153,58 @@ Develop a proof-of-concept Clinical Data Assistant that enables users to query a
 ```text
 User Question
       ↓
-ClinicalTrialDataAgent
+Prompt Generation
       ↓
 OpenAI LLM
       ↓
 Structured JSON Output
       ↓
-Query Engine
+Clinical Dataset Query
       ↓
 Results Summary
+      ↓
+PDF Report Generation
 ```
 
 ## Program Files
 
-### `main.py`
-
-Application entry point.
-
-Responsibilities:
-
-* Accepts user questions
-* Calls the Clinical Trial Data Agent
-* Displays structured outputs
-* Executes dataset queries
-* Returns results to the user
-
----
-
 ### `clinical_trial_data_agent.py`
 
-Core AI agent implementation.
+Main application entry point.
 
 Responsibilities:
 
-* Creates prompts for the LLM
-* Sends questions to OpenAI
-* Parses structured responses
-* Coordinates query execution
+* Executes the end-to-end AI workflow
+* Processes example user questions
+* Coordinates prompt generation, parsing, and query execution
+* Displays structured JSON outputs and query results
+* Generates a PDF report containing all query results
 
 ---
 
-### `query_engine.py`
+### `prompt.py`
 
-Clinical data query engine.
+Prompt engineering module.
 
 Responsibilities:
 
-* Loads the adverse event dataset
-* Applies filtering logic
-* Returns matching records
+* Defines the adverse event dataset schema
+* Provides instructions for converting natural-language questions into structured queries
+* Creates prompts sent to the LLM
 
 ---
 
-### `schema.py`
+### `parser.py`
 
-Structured output schema definition.
+Structured output parser.
 
 Responsibilities:
 
-* Defines expected JSON structure
-* Standardizes LLM responses
-* Validates parsed outputs
+* Validates LLM responses
+* Converts responses into a standardized JSON structure
+* Extracts query parameters used for dataset filtering
 
-Example:
+Example output:
 
 ```json
 {
@@ -223,6 +212,18 @@ Example:
   "filter_value": "HEADACHE"
 }
 ```
+
+---
+
+### `agent.py`
+
+Clinical data query engine.
+
+Responsibilities:
+
+* Applies structured query logic
+* Filters the adverse event dataset
+* Returns matching records and summary results
 
 ---
 
@@ -236,7 +237,7 @@ Sample adverse event dataset used by the AI assistant.
 
 ### Prerequisites
 
-Install required Python packages:
+Install the required Python packages:
 
 ```bash
 pip install -r requirements.txt
@@ -244,7 +245,7 @@ pip install -r requirements.txt
 
 ### Environment Setup
 
-Create a `.env` file inside the `question_4_AI` directory:
+Create a `.env` file inside the `question_4_AI` directory and add your OpenAI API key:
 
 ```text
 OPENAI_API_KEY=YOUR_API_KEY_HERE
@@ -260,7 +261,7 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ### Run the Application
 
-Navigate to the AI assistant folder:
+Navigate to the AI assistant directory:
 
 ```bash
 cd question_4_AI
@@ -269,44 +270,52 @@ cd question_4_AI
 Run the application:
 
 ```bash
-python ClinicalTrialDataAgent.py
+python clinical_trial_data_agent.py
 ```
+
 ### Customizing Example Questions
 
-The application includes a list of predefined example questions for demonstration purposes.
-
-To add or modify example questions, open:
+To test additional clinical questions, open:
 
 ```text
-ClinicalTrialDataAgent.py
+clinical_trial_data_agent.py
 ```
 
-Locate the following section:
+Locate the example question list:
 
 ```python
 questions = [
-    "Which subjects experienced severe headache adverse events?",
-    ...
+    "Which subjects experienced severe headache adverse events?"
 ]
 ```
 
-Add additional questions to the list as needed. The application will process each question through the complete workflow:
+Add additional questions to the list as needed.
 
-1. Natural language question
-2. LLM interpretation
-3. Structured JSON generation
-4. Clinical dataset query execution
-5. Results summary
-
-This allows users to easily test additional clinical data queries without modifying the core application logic.
-
-### Example Query
+Each question will be processed through the complete workflow:
 
 ```text
-Which subjects experienced severe headache adverse events?
+Natural Language Question
+            ↓
+Prompt Generation
+            ↓
+OpenAI LLM
+            ↓
+Structured JSON Output
+            ↓
+Dataset Query
+            ↓
+Results Summary
+            ↓
+PDF Report
 ```
 
-### Example Structured Output
+---
+
+## Example Query
+
+> Which subjects experienced severe headache adverse events?
+
+## Example Structured Output
 
 ```json
 {
@@ -315,58 +324,23 @@ Which subjects experienced severe headache adverse events?
 }
 ```
 
-### Example Result
-
-```text
-Matching Subjects:
-SUBJ001
-SUBJ005
-SUBJ021
-
-Summary:
-3 subjects experienced headache adverse events.
-```
-
 ## Output
 
-* PDF file for Final Output
+For each example question, the application generates:
+
 * Structured JSON interpretation
 * Matching subject IDs
 * Query results summary
 
----
+Additionally, all query results are compiled into a PDF report:
 
-# Technologies Used
+```text
+question4_results.pdf
+```
 
-## Clinical Standards
+The PDF report contains:
 
-* CDISC SDTM
-* CDISC ADaM
-
-## R
-
-* sdtm.oak
-* admiral
-* dplyr
-* tidyr
-* gt
-* ggplot2
-
-## Python
-
-* pandas
-* LangChain
-* OpenAI API
-* python-dotenv
-
----
-
-# Reproducibility
-
-Each question folder contains:
-
-* Source code
-* Generated outputs
-* Execution logs
-
-The included logs demonstrate successful execution and support reproducibility of all deliverables. The workflow follows a traceable process from source data to final outputs.
+* Original user question
+* LLM-generated structured JSON output
+* Matching adverse event records
+* Query result summaries
