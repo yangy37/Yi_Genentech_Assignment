@@ -225,7 +225,7 @@ Responsibilities:
 
 ---
 
-### `ae_dataset.csv`
+### `adae.csv`
 
 Sample adverse event dataset used by the AI assistant.
 
@@ -264,12 +264,35 @@ Navigate to the AI assistant directory:
 ```bash
 cd question_4_AI
 ```
+### Run the Application
 
-Run the application:
+Open the file:
 
-```bash
-python clinical_trial_data_agent.py
+```text
+clinical_trial_data_agent.py
 ```
+
+and execute the script using your preferred Python environment (e.g., VS Code, PyCharm, or another IDE).
+
+Before running the application, ensure that:
+
+* Required packages have been installed from `requirements.txt`
+* A valid OpenAI API key has been added to the `.env` file
+* The adverse event dataset (`adae.csv`) is available in the project directory
+
+When executed, the application will:
+
+1. Process the example clinical questions defined in `clinical_trial_data_agent.py`
+2. Send each question to the OpenAI LLM
+3. Generate structured JSON outputs
+4. Query the adverse event dataset
+5. Display the results
+6. Generate a consolidated PDF report:
+
+```text
+question4_results.pdf
+```
+
 
 ### Customizing Example Questions
 
