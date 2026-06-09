@@ -19,8 +19,6 @@ Yi_Genentech_Assignment
 ├── question_2_adam/
 │
 ├── question_3_tlg/
-│   ├── question3_01_sumtable/
-│   └── question3_02_visuals/
 │
 └── question_4_AI/
 ```
@@ -35,7 +33,7 @@ Create an SDTM-compliant DS (Disposition) domain using the `{sdtm.oak}` package.
 
 ## Files
 
-### `question_1_sdtm_01_create_ds_domain.R`
+### `01_create_ds_domain.R`
 
 Main derivation program that:
 
@@ -67,7 +65,7 @@ Create an ADaM ADSL (Subject-Level Analysis Dataset) using the `{admiral}` packa
 
 ## Files
 
-### `question_2_adam_01_create_adsl.R`
+### `create_adsl.R`
 
 Main derivation program that:
 
@@ -101,7 +99,7 @@ Generate a Treatment-Emergent Adverse Event (TEAE) summary table suitable for cl
 
 ### Program
 
-#### `question_3_tlg_01_create_ae_summary_table.R`
+#### `01_create_ae_summary_table.R`
 
 Creates:
 
@@ -126,7 +124,7 @@ Create graphical summaries of adverse event data.
 
 ### Program
 
-#### `question_3_tlg_01_create_ae_visualizations.R`
+#### `02_create_visualizations.R`
 
 Generates:
 
